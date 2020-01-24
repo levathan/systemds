@@ -21,9 +21,12 @@ import org.tugraz.sysds.runtime.controlprogram.context.ExecutionContext;
 import org.tugraz.sysds.runtime.instructions.Instruction;
 import org.tugraz.sysds.runtime.instructions.cp.AggregateBinaryCPInstruction;
 import org.tugraz.sysds.runtime.instructions.cp.AggregateUnaryCPInstruction;
+import org.tugraz.sysds.runtime.instructions.cp.AppendCPInstruction;
 import org.tugraz.sysds.runtime.instructions.cp.Data;
 import org.tugraz.sysds.runtime.instructions.cp.VariableCPInstruction;
 import org.tugraz.sysds.runtime.instructions.spark.AggregateUnarySPInstruction;
+import org.tugraz.sysds.runtime.instructions.spark.AppendGAlignedSPInstruction;
+import org.tugraz.sysds.runtime.instructions.spark.AppendGSPInstruction;
 import org.tugraz.sysds.runtime.instructions.spark.MapmmSPInstruction;
 import org.tugraz.sysds.runtime.instructions.spark.WriteSPInstruction;
 
@@ -43,6 +46,14 @@ public class FEDInstructionUtils {
 			MatrixObject mo1 = ec.getMatrixObject(instruction.input1);
 			if (mo1.isFederated() && instruction.getAUType() == AggregateUnaryCPInstruction.AUType.DEFAULT)
 				return AggregateUnaryFEDInstruction.parseInstruction(inst.getInstructionString());
+		}
+		else if (inst instanceof AppendCPInstruction) {
+			AppendCPInstruction instruction = (AppendCPInstruction) inst;
+			MatrixObject mo1 = ec.getMatrixObject(instruction.input1);
+			MatrixObject mo2 = ec.getMatrixObject(instruction.input2);
+			if (mo1.isFederated() && mo2.isFederated()) {
+				return AppendFEDInstruction.parseInstruction(inst.getInstructionString());
+			}
 		}
 		return inst;
 	}
@@ -73,6 +84,14 @@ public class FEDInstructionUtils {
 			if (data instanceof MatrixObject && ((MatrixObject) data).isFederated()) {
 				// Write spark instruction can not be executed for federeted matrix objects (tries to get rdds which do not exist)
 				return VariableCPInstruction.parseInstruction(instruction.getInstructionString());
+			}
+		}
+		else if (inst instanceof AppendGAlignedSPInstruction) {
+			// TODO other Append Spark instructions
+			AppendGAlignedSPInstruction instruction = (AppendGAlignedSPInstruction) inst;
+			Data data = ec.getVariable(instruction.input1);
+			if (data instanceof MatrixObject && ((MatrixObject) data).isFederated()) {
+				return AppendFEDInstruction.parseInstruction(instruction.getInstructionString());
 			}
 		}
 		return inst;
